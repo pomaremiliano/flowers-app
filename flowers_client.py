@@ -1,54 +1,68 @@
 import io
 import json
-
 import numpy as np
 from PIL import Image
 import requests
 from numpy import asarray
+import os
+import tensorflow as tf
+import pathlib
 
-#SERVER_URL = 'https://tensorflow-linear-model-0khx.onrender.com/v1/models/flowers-model:predict'
 SERVER_URL = 'http://localhost:8501/v1/models/flowers-model:predict'
 
-#image = '/home/adsoft/.keras/datasets/flower_photos/roses/10090824183_d02c613f10_m.jpg'
-image = '/home/adsoft/.keras/datasets/flower_photos/tulips/100930342_92e8746431_n.jpg'
-#image = '/home/adsoft/.keras/datasets/flower_photos/sunflowers/1008566138_6927679c8a.jpg'
-score = 0
+dataset_url = "https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz"
+data_dir = tf.keras.utils.get_file('flower_photos', origin=dataset_url, untar=True)
+data_dir = pathlib.Path(data_dir)
 
+if 'flower_photos' in os.listdir(data_dir):
+    data_dir = os.path.join(data_dir, 'flower_photos')
+
+folder_to_test = os.path.join(str(data_dir), 'tulips')
+image_name = [f for f in os.listdir(folder_to_test) if f.endswith('.jpg')][0]
+image_path = os.path.join(folder_to_test, image_name)
+
+print(f"Probando con la imagen: {image_path}")
 
 def main():
-  img = Image.open(image)
+    try:
+        img = Image.open(image_path).convert('RGB')
+    except FileNotFoundError:
+        print("Error: No se encontró la imagen.")
+        return
+    img = img.resize((64, 64))
+    img_array = asarray(img)
 
-#  img = Image.open(image)
-  #img = Image.open('dog.png')
-  img = img.resize((64, 64))
-  img_array = asarray(img)
+    img_array = img_array.astype('float32') / 255.0
 
-  img = np.expand_dims(img_array, 0).tolist()
-  predict_request = json.dumps({'instances': img })
+    img_list = np.expand_dims(img_array, 0).tolist()
+    
+    predict_request = json.dumps({'instances': img_list})
 
-  # Send few actual requests and report average latency.
-  total_time = 0
-  num_requests = 1
-  index = 0
-  for _ in range(num_requests):
-    response = requests.post(SERVER_URL, data=predict_request)
-    response.raise_for_status()
-    total_time += response.elapsed.total_seconds()
-    prediction = response.json()['predictions']
-#    score = float(sigmoid[0](prediction[0][0]))
-    print(prediction[0]) 
-    classes_labels = ['dandelion', 'sunflowers', 'daisy', 'tulips', 'roses']
-    print(classes_labels)
-    image_output_class = classes_labels[np.argmax(prediction[0])]
-    print(np.argmax(prediction[0]))
+    print("\nEnviando petición al servidor...")
+    try:
+        response = requests.post(SERVER_URL, data=predict_request)
+        
+        if response.status_code != 200:
+            print(f"\nERROR DEL SERVIDOR (Código {response.status_code}):")
+            print(response.text)
+            return
 
-    print("The predicted class is", image_output_class)
+        response.raise_for_status()
+        prediction = response.json()['predictions']
+        
+    except requests.exceptions.ConnectionError:
+        print("Error: No se pudo conectar a Docker. Asegúrate de que el contenedor esté corriendo.")
+        return
 
-#    print(response.json())
-#    print ('sigmoid ', sigmoid[0](prediction[0][0]))
+    print("\n--- Resultados Exitosos ---")
+    classes_labels = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips']
+    
+    probs = prediction[0]
+    idx_max = np.argmax(probs)
+    image_output_class = classes_labels[idx_max]
+    confidence = probs[idx_max] * 100
 
-
-
+    print(f"Predicción: {image_output_class.upper()} con {confidence:.2f}% de confianza")
 
 if __name__ == '__main__':
-  main()
+    main()
