@@ -16,11 +16,11 @@ import pathlib
 
 # Set the path of the input folder
 
-#dataset = "https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz"
-#directory = tf.keras.utils.get_file('flower_photos', origin=dataset, untar=True)
-#data = pathlib.Path(directory)
+dataset = "https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz"
+directory = '/home/codespace/.keras/datasets/flower_photos/flower_photos/'
+data = pathlib.Path(directory)
 
-data = '/home/adsoft/.keras/datasets/flower_photos'
+#data = '/home/codespace/.keras/datasets/flower_photos'
 print(data)
 folders = os.listdir(data)
 print(folders)
@@ -35,6 +35,8 @@ train_images = []
 size = 64,64
 
 for folder in folders:
+    if not os.path.isdir(os.path.join(data, folder)):
+        continue
     for file in os.listdir(os.path.join(data,folder)):
         if file.endswith("jpg"):
             image_names.append(os.path.join(data,folder,file))
@@ -107,7 +109,20 @@ print(b)
 img_height = 64
 img_width = 64
 import cv2
-image = cv2.imread('/home/adsoft/.keras/datasets/flower_photos/roses/10090824183_d02c613f10_m.jpg')
+
+test_folder = os.path.join(str(data), 'tulips')
+
+# Filtramos solo archivos .jpg para evitar errores
+available_images = [f for f in os.listdir(test_folder) if f.endswith('.jpg')]
+first_image_name = available_images[0] # Tomamos la primera que exista
+
+path_to_test = os.path.join(test_folder, first_image_name)
+print(f"Probando predicción con: {path_to_test}")
+
+image = cv2.imread(path_to_test)
+
+#img_path = os.path.join(str(data), 'roses', '10090824183_d02c613f10_m.jpg')
+#image = cv2.imread(img_path)
 #image = cv2.imread('/root/.keras/datasets/flower_photos/tulips/100930342_92e8746431_n.jpg')
 #image = cv2.imread('/home/adsoft/.keras/datasets/flower_photos/sunflowers/1008566138_6927679c8a.jpg')
 
